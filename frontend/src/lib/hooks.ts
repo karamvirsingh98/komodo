@@ -17,6 +17,7 @@ import {
 import { UsableResource } from "@types";
 import { useToast } from "@ui/use-toast";
 import { atom, useAtom } from "jotai";
+import { atomFamily } from "jotai/utils";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { RESOURCE_TARGETS } from "./utils";
@@ -463,3 +464,12 @@ const WEBHOOK_ID_OR_NAME_ATOM = atomWithStorage<WebhookIdOrName>(
 export const useWebhookIdOrName = () => {
   return useAtom<WebhookIdOrName>(WEBHOOK_ID_OR_NAME_ATOM);
 };
+
+// const selected_resources = atom<Partial<Record<UsableResource, string[]>>>({});
+// export const useSelectedResources = () => useAtom(selected_resources);
+
+const selected_resources = atomFamily((_: UsableResource) =>
+  atom<string[]>([])
+);
+export const useSelectedResources = (type: UsableResource) =>
+  useAtom(selected_resources(type));
