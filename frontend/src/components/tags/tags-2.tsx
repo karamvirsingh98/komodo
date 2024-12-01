@@ -136,8 +136,6 @@ export const ResourceTagsV2 = ({
         }
       };
 
-      console.log(id, container.clientWidth, container.scrollWidth);
-
       handler();
       container.addEventListener("scroll", handler);
       return () => {
