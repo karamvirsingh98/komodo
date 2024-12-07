@@ -1,4 +1,4 @@
-import { useRead, useSelectedResources } from "@lib/hooks";
+import { useRead, useSelectedResources, useUser } from "@lib/hooks";
 import { UsableResource } from "@types";
 import { DataTable, SortableHeader } from "@ui/data-table";
 import { Types } from "komodo_client";
@@ -36,6 +36,9 @@ export const ResourceListItemTable = <T extends keyof ListItemInfoMap>({
 
   const [_, setSelectedResources] = useSelectedResources(type);
 
+  const admin = useUser().data?.admin;
+  const permissions = useRead("ListPermissions", {}).data;
+
   return (
     <DataTable
       tableKey={type + "-resources-table"}
@@ -44,6 +47,25 @@ export const ResourceListItemTable = <T extends keyof ListItemInfoMap>({
       selectOptions={{
         selectKey: ({ name }) => name,
         onSelect: setSelectedResources,
+        disableRow: (row) => {
+          // don't disable any rows for admins
+          if (admin) return false;
+
+          // check if user can write or execute on this resource
+          const perm = permissions?.find(
+            (p) => p.resource_target.id === row.original.id
+          );
+
+          if (
+            perm?.level === Types.PermissionLevel.Execute ||
+            perm?.level === Types.PermissionLevel.Write
+          ) {
+            return false;
+          }
+
+          // disable the row by default
+          return true;
+        },
       }}
     />
   );

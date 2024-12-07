@@ -1,4 +1,10 @@
-import { useSelectedResources, useExecute, useWrite } from "@lib/hooks";
+import {
+  useSelectedResources,
+  useExecute,
+  useWrite,
+  useUser,
+  useRead,
+} from "@lib/hooks";
 import { UsableResource } from "@types";
 import { Button } from "@ui/button";
 import {
@@ -63,54 +69,92 @@ const GroupActionDropdownMenu = <
   actions: T[];
   onSelect: (item: T) => void;
   disabled: boolean;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild disabled={disabled}>
-      <Button variant="outline" className="w-40 justify-between">
-        Execute
-        <ChevronDown className="w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent
-      align="start"
-      className={type === "Server" ? "w-56" : "w-40"}
-    >
-      {type === "ResourceSync" && (
-        <DropdownMenuItem
-          onClick={() => onSelect("RefreshResourceSyncPending" as any)}
-          className="focus:bg-secondary"
-        >
-          <Button variant="secondary" size="sm" className="w-full">
-            Refresh
-          </Button>
-        </DropdownMenuItem>
-      )}
-      {actions.map((action) => (
-        <DropdownMenuItem
-          key={action}
-          onClick={() => onSelect(action)}
-          className="focus:bg-secondary"
-        >
-          <Button variant="secondary" size="sm" className="w-full ">
-            {action
-              .replaceAll("Batch", "")
-              .replaceAll(type, "")
-              .match(/[A-Z][a-z]+/g)
-              ?.join(" ")}
-          </Button>
-        </DropdownMenuItem>
-      ))}
-      <DropdownMenuItem
-        onClick={() => onSelect(`Delete${type}` as any)}
-        className="focus:bg-destructive"
-      >
-        <Button variant="destructive" size="sm" className="w-full">
-          Delete
+}) => {
+  const [selected] = useSelectedResources(type);
+
+  const admin = useUser().data?.admin;
+  const permissions = useRead("ListPermissions", {}).data;
+  const resources = useRead(`List${type}s`, {}).data;
+
+  const can_write =
+    admin ||
+    selected.every((name) => {
+      const rx = resources?.find((rx) => rx.name === name);
+      const pm = permissions?.find((p) => p.resource_target.id === rx?.id);
+      if (pm?.level === Types.PermissionLevel.Write) {
+        return true;
+      } else {
+        return false;
+      }
+    });
+
+  const can_execute =
+    admin ||
+    selected.every((name) => {
+      const rx = resources?.find((rx) => rx.name === name);
+      const pm = permissions?.find((p) => p.resource_target.id === rx?.id);
+      if (
+        pm?.level === Types.PermissionLevel.Write ||
+        pm?.level === Types.PermissionLevel.Execute
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <Button variant="outline" className="w-40 justify-between">
+          Execute
+          <ChevronDown className="w-4" />
         </Button>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className={type === "Server" ? "w-56" : "w-40"}
+      >
+        {type === "ResourceSync" && (
+          <DropdownMenuItem
+            onClick={() => onSelect("RefreshResourceSyncPending" as any)}
+            className="focus:bg-secondary"
+          >
+            <Button variant="secondary" size="sm" className="w-full">
+              Refresh
+            </Button>
+          </DropdownMenuItem>
+        )}
+        {can_execute &&
+          actions.map((action) => (
+            <DropdownMenuItem
+              key={action}
+              onClick={() => onSelect(action)}
+              className="focus:bg-secondary"
+            >
+              <Button variant="secondary" size="sm" className="w-full ">
+                {action
+                  .replaceAll("Batch", "")
+                  .replaceAll(type, "")
+                  .match(/[A-Z][a-z]+/g)
+                  ?.join(" ")}
+              </Button>
+            </DropdownMenuItem>
+          ))}
+        {can_write && (
+          <DropdownMenuItem
+            onClick={() => onSelect(`Delete${type}` as any)}
+            className="focus:bg-destructive"
+          >
+            <Button variant="destructive" size="sm" className="w-full">
+              Delete
+            </Button>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 const GroupActionDialog = ({
   type,
